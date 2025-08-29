@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Key } from "react";
 import { useSocket } from "../../hooks/useSocket";
 
 export default function Client() {
@@ -101,16 +101,27 @@ export default function Client() {
     };
   }, []);
 
-  const handleMouseClick = () => socket.emit("mouse_click", {});
-
+  const handleMouseClick = () => {
+    console.log("Mouse Clicked");
+    socket.emit("mouse_click", {
+      button: "left",
+    });
+  };
   const handleMouseMove = ({ clientX, clientY }: { clientX: number; clientY: number }) => {
     try {
       console.log("emit mouse_move", clientX, clientY);
+      if (!videoRef.current) return;
+      const videoRect = videoRef.current.getBoundingClientRect();
+
+      // Mouse position relative to the video element
+      const mouseX = clientX - videoRect.left;
+      const mouseY = clientY - videoRect.top;
+
       socket.emit("mouse_move", {
-        clientX,
-        clientY,
-        clientWidth: window.innerWidth,
-        clientHeight: window.innerHeight,
+        clientX: mouseX,
+        clientY: mouseY,
+        clientWidth: videoRect.width,
+        clientHeight: videoRect.height,
       });
     } catch (error) {
       console.log("error", error);
@@ -118,14 +129,73 @@ export default function Client() {
   };
 
   const [isFocus, setIsFocus] = useState(false);
+  const latencyRef = useRef<HTMLSpanElement>(null);
+  const rtcLatencyRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    socket.on("ping_check", (lastPing) => {
+      const latency = Date.now() - lastPing;
+      if (latencyRef.current) {
+        latencyRef.current.innerHTML = `${latency} ms`;
+      }
+    });
+
+    async function getWebRTCLatency(peerConnection: RTCPeerConnection) {
+      const stats = await peerConnection.getStats(null);
+      stats.forEach((report) => {
+        if (report.type === "inbound-rtp" && report.kind === "video") {
+          if (report.jitterBufferDelay && report.jitterBufferEmittedCount > 0) {
+            const avgDelaySec = report.jitterBufferDelay / report.jitterBufferEmittedCount;
+
+            if (!rtcLatencyRef.current) return;
+            rtcLatencyRef.current.innerHTML = `${(avgDelaySec * 1000).toFixed(2)} ms`;
+          }
+        }
+      });
+    }
+    let interval: number | null = null;
+    interval = setInterval(() => getWebRTCLatency(rtcPeerConnection.current), 250);
+
+    return () => {
+      socket.off("ping_check");
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isFocus) return;
+    const keyPressEvent = (e: KeyboardEvent) => {
+      console.log('e.key', e.key);
+      socket.emit("key_press", { button: e.key });
+    };
+    window.addEventListener("keydown", keyPressEvent);
+    return () => {
+      window.removeEventListener("keydown", keyPressEvent);
+    };
+  }, [isFocus]);
 
   return (
     <div
       className={`flex gap-8 p-4 flex-col ${isFocus ? "border-2 border-red-500" : ""}`}
       onClick={() => setIsFocus(true)}
     >
-      {!isReady && "Electron client - waiting to receive screen stream"}
-      <div className="w-full relative p-4" onClick={handleMouseClick} onMouseMove={handleMouseMove}>
+      <div className="h-12 flex justify-between bg-amber-600/20 rounded-xl">
+        <div>{!isReady && "Electron client - waiting to receive screen stream"}</div>
+        <div className="bg-neutral-200 w-40 flex items-center justify-center flex-col">
+          <div>
+            <span className="bg-green-300 h-2 w-2" />
+            <span ref={latencyRef} />
+          </div>
+          <div>
+            <span className="bg-green-300 h-2 w-2" />
+            <span ref={rtcLatencyRef} />
+          </div>
+        </div>
+      </div>
+      <div
+        className="w-full relative ring ring-amber-600 rounded-lg"
+        onClick={handleMouseClick}
+        onMouseMove={handleMouseMove}
+      >
         <span className="pb-[56.25%] block w-full rounded z-[1]" />
         <video ref={videoRef} className="video absolute top-0 left-0 w-full h-full " autoPlay muted>
           video not available

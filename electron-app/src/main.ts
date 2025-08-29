@@ -138,11 +138,9 @@ const createWindow = () => {
   const ipController = new InputController();
   socket.on("selectedScreen", (selectedScreen) => {
     clientSelectedScreen = selectedScreen;
-    // sendSelectedScreen(clientSelectedScreen);
     console.log("selectedScreen", clientSelectedScreen);
   });
   socket.on("mouse_move", async ({ clientX, clientY, clientWidth, clientHeight }) => {
-    console.log("Electron mouse move", clientSelectedScreen);
     const {
       displaySize: { width, height },
     } = clientSelectedScreen;
@@ -150,8 +148,16 @@ const createWindow = () => {
     const ratioY = height / clientHeight;
     const hostX = clientX * ratioX;
     const hostY = clientY * ratioY;
-    console.log("mouseMoved", hostX, hostY);
     ipController.mouseMove(hostX, hostY);
+  });
+  socket.on("mouse_click", ({ button }) => {
+    ipController.mouseClick(button);
+  });
+  socket.on("key_press", ({ button }) => {
+    ipController.keyPress(button);
+  });
+  socket.on("key_combo", ({ keys }) => {
+    ipController.keyCombo(keys);
   });
 };
 

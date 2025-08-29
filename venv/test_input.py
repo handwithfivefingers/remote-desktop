@@ -12,3 +12,6 @@ mouse.click(Button.left, 1)
 
 # Type hello
 keyboard.type("Hello from Python service!")
+
+
+keyboard._Key.backspace()

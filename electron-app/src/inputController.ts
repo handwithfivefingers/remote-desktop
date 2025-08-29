@@ -20,4 +20,10 @@ export class InputController {
   keyPress(key: string) {
     socket.emit("keyPress", { key });
   }
+  keyCombo(keys: string[]) {
+    socket.emit("keyCombo", { keys });
+  }
+  type(text: string) {
+    socket.emit("type", { text });
+  }
 }

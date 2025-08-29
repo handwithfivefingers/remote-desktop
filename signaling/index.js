@@ -40,8 +40,18 @@ const io = new Server(httpServer, {
 
 const connections = io.of("/remote-ctrl");
 
+let lastPing = null;
+
 connections.on("connection", async (socket) => {
   console.log("connection established");
+
+  function sendPing() {
+    lastPing = Date.now();
+    socket.emit("ping_check", lastPing);
+  }
+
+  setInterval(sendPing, 500);
+
   socket.on("offer", (sdp) => {
     console.log("routing offer");
     socket.broadcast.emit("offer", sdp);
@@ -71,13 +81,18 @@ connections.on("connection", async (socket) => {
     socket.broadcast.emit("close");
   });
 
-  //   socket.on("mouse_click", ({ button }) => {
-  //     console.log("mouseClicked");
-  //     ipController.mouseClick(button);
-  //   });
+  socket.on("mouse_click", ({ button }) => {
+    console.log("mouseClicked", button);
+    socket.broadcast.emit("mouse_click", { button });
+  });
 
-  //   socket.on("keyPress", ({ button }) => {
-  //     console.log("keyPress", button);
-  //     ipController.keyPress(button);
-  //   });
+  socket.on("key_press", ({ button }) => {
+    console.log("key_press", button);
+    socket.broadcast.emit("key_press", { button });
+  });
+  
+  socket.on("key_combo", ({ button }) => {
+    console.log("key_combo", button);
+    socket.broadcast.emit("key_combo", { button });
+  });
 });
