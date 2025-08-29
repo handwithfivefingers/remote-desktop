@@ -2,7 +2,7 @@ import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, screen } from "elec
 import path from "path";
 import { io } from "socket.io-client";
 import { InputController } from "./inputController";
-const socket = io("https://2b584cbaa1d1.ngrok-free.app/remote-ctrl");
+const socket = io("https://d09053434fdb.ngrok-free.app/remote-ctrl");
 
 let availableScreens: any[] = [];
 let mainWindow: BrowserWindow;
