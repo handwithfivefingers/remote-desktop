@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Key } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../../hooks/useSocket";
 
 export default function Client() {
@@ -164,8 +164,18 @@ export default function Client() {
   useEffect(() => {
     if (!isFocus) return;
     const keyPressEvent = (e: KeyboardEvent) => {
-      console.log('e.key', e.key);
-      socket.emit("key_press", { button: e.key });
+      console.log("e.key", e.key);
+      const keys = [];
+      if (e.ctrlKey || e.metaKey) keys.push("ctrl");
+      if (e.shiftKey) keys.push("shift");
+      if (e.altKey) keys.push("alt");
+      console.log("keys", keys);
+      keys.push(e.key.toLowerCase());
+      if (keys.length > 1) {
+        socket.emit("key_combo", { button: keys });
+      } else {
+        socket.emit("key_press", { button: e.key });
+      }
     };
     window.addEventListener("keydown", keyPressEvent);
     return () => {
@@ -173,9 +183,18 @@ export default function Client() {
     };
   }, [isFocus]);
 
+  const handleScroll = (e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    console.log("handleScroll", e);
+    socket.emit("mouse_scroll", {
+      dx: Math.sign(e.deltaX),
+      dy: Math.sign(e.deltaY),
+    });
+  };
+
   return (
     <div
-      className={`flex gap-8 p-4 flex-col ${isFocus ? "border-2 border-red-500" : ""}`}
+      className={`flex gap-8 p-4 flex-col overflow-hidden ${isFocus ? "border-2 border-red-500" : ""}`}
       onClick={() => setIsFocus(true)}
     >
       <div className="h-12 flex justify-between bg-amber-600/20 rounded-xl">
@@ -195,6 +214,7 @@ export default function Client() {
         className="w-full relative ring ring-amber-600 rounded-lg"
         onClick={handleMouseClick}
         onMouseMove={handleMouseMove}
+        onWheel={handleScroll}
       >
         <span className="pb-[56.25%] block w-full rounded z-[1]" />
         <video ref={videoRef} className="video absolute top-0 left-0 w-full h-full " autoPlay muted>

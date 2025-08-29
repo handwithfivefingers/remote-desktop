@@ -10,12 +10,19 @@ const socket = io("http://localhost:5001");
 // socket.emit("keyPress", { key: "a" }); // types 'a'
 // socket.emit("keyPress", { key: "enter" }); // presses Enter
 
+interface IMouseScrollOptions {
+  direction: "up" | "down";
+  amount: number;
+}
 export class InputController {
   mouseMove(x: number, y: number) {
     socket.emit("mouseMove", { x, y });
   }
   mouseClick(button: string) {
     socket.emit("mouseClick", { button });
+  }
+  mouseScroll(options: IMouseScrollOptions) {
+    socket.emit("mouseScroll", options);
   }
   keyPress(key: string) {
     socket.emit("keyPress", { key });

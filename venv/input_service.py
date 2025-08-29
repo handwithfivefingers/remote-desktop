@@ -1,54 +1,3 @@
-# from flask import Flask
-# from flask_socketio import SocketIO
-# from pynput.mouse import Controller as MouseController, Button
-# from pynput.keyboard import Controller as KeyboardController, Key
-
-# app = Flask(__name__)
-# socketio = SocketIO(app, cors_allowed_origins="*")
-
-# mouse = MouseController()
-# keyboard = KeyboardController()
-
-# # --- WebSocket Events ---
-# @socketio.on("mouseMove")
-# def handle_mouse_move(data):
-#     x, y = data.get("x"), data.get("y")
-#     if x is not None and y is not None:
-#         mouse.position = (x, y)
-#         print(f"Moved mouse to: ({x}, {y})")
-
-# @socketio.on("mouseClick")
-# def handle_mouse_click(data):
-#     button = data.get("button", "left")
-#     if button == "left":
-#         mouse.click(Button.left, 1)
-#     elif button == "right":
-#         mouse.click(Button.right, 1)
-#     print(f"Clicked {button} mouse button")
-
-# @socketio.on("keyPress")
-# def handle_key_press(data):
-#     key = data.get("key")
-#     if key:
-#         try:
-#             # If it's a special key
-#             if hasattr(Key, key):
-#                 keyboard.tap(getattr(Key, key))
-#             elif key == "Backspace":
-#                 keyboard.tap(Key.backspace)
-#             else:
-#                 keyboard.type(key)
-#             print(f"Pressed key: {key}")
-#         except Exception as e:
-#             print(f"Error pressing key {key}: {e}")
-
-# # --- Run Server ---
-# if __name__ == "__main__":
-#     print("🎮 Input Service Running on ws://localhost:5001")
-#     socketio.run(app, host="0.0.0.0", port=5001)
-
-
-
 from flask import Flask
 from flask_socketio import SocketIO
 from pynput.mouse import Controller as MouseController, Button
@@ -104,6 +53,37 @@ class InputService:
             logger.error(f"Failed to click {button_name} button: {e}")
             return False
     
+    @staticmethod
+    def scroll_mouse(dx=0, dy=0):
+        """Scroll mouse wheel"""
+        try:
+            if not isinstance(dx, (int, float)) or not isinstance(dy, (int, float)):
+                raise ValueError("Scroll values must be numeric")
+            
+            # Convert to integers for scroll
+            dx, dy = int(dx), int(dy)
+            
+            mouse.scroll(dx, dy)
+            
+            # Log scroll direction for clarity
+            if dy > 0:
+                direction = f"up ({dy})"
+            elif dy < 0:
+                direction = f"down ({abs(dy)})"
+            elif dx > 0:
+                direction = f"right ({dx})"
+            elif dx < 0:
+                direction = f"left ({abs(dx)})"
+            else:
+                direction = "no movement"
+            
+            logger.info(f"Mouse scrolled: {direction}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to scroll mouse dx={dx}, dy={dy}: {e}")
+            return False
+        
     @staticmethod
     def press_key(key_input):
         """Handle key press - supports all possible key combinations and cases"""
@@ -303,6 +283,41 @@ def handle_mouse_click(data):
     
     if not success:
         socketio.emit("error", {"message": f"Failed to click {button} button"})
+
+@socketio.on("mouseScroll")
+def handle_mouse_scroll(data):
+    """Handle mouse scroll events"""
+    if not isinstance(data, dict):
+        logger.warning("Invalid mouse scroll data format")
+        socketio.emit("error", {"message": "Invalid data format"})
+        return
+    
+    # Support different input formats
+    dx = data.get("dx", data.get("deltaX", 0))
+    dy = data.get("dy", data.get("deltaY", 0))
+    
+    # Also support direction + amount format
+    direction = data.get("direction")
+    amount = data.get("amount", 1)
+    
+    if direction:
+        direction_map = {
+            "up": (0, amount),
+            "down": (0, -amount),
+            "left": (-amount, 0), 
+            "right": (amount, 0)
+        }
+        
+        if direction.lower() in direction_map:
+            dx, dy = direction_map[direction.lower()]
+        else:
+            logger.warning(f"Invalid scroll direction: {direction}")
+            socketio.emit("error", {"message": f"Invalid scroll direction: {direction}"})
+            return
+    
+    success = InputService.scroll_mouse(dx, dy)
+    if not success:
+        socketio.emit("error", {"message": f"Failed to scroll mouse dx={dx}, dy={dy}"})
 
 @socketio.on("keyPress")
 def handle_key_press(data):

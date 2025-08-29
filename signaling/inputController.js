@@ -17,6 +17,9 @@ export class InputController {
   mouseClick(button) {
     socket.emit("mouseClick", { button });
   }
+  mouseScroll({ direction, amount }) {
+    socket.emit("mouseClick", { direction, amount });
+  }
   keyPress(key) {
     socket.emit("keyPress", { key });
   }

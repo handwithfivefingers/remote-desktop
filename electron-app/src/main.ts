@@ -159,6 +159,9 @@ const createWindow = () => {
   socket.on("key_combo", ({ keys }) => {
     ipController.keyCombo(keys);
   });
+  socket.on("mouse_scroll", ({ keys }) => {
+    ipController.mouseScroll(keys);
+  });
 };
 
 app.on("ready", () => {

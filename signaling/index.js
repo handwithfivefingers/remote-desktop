@@ -90,9 +90,13 @@ connections.on("connection", async (socket) => {
     console.log("key_press", button);
     socket.broadcast.emit("key_press", { button });
   });
-  
+
   socket.on("key_combo", ({ button }) => {
     console.log("key_combo", button);
-    socket.broadcast.emit("key_combo", { button });
+    socket.broadcast.emit("key_combo", { keys: button });
+  });
+  socket.on("mouse_scroll", (options) => {
+    console.log("options", options);
+    socket.broadcast.emit("mouse_scroll", options);
   });
 });
