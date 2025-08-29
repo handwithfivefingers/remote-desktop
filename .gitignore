@@ -1,0 +1,9 @@
+
+# Javascript
+
+*/node_modules
+*/.vite
+*/.env
+
+# Python
+*/lib
