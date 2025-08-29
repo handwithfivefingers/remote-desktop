@@ -1,102 +1,69 @@
-import cors from "cors";
 import { app, BrowserWindow, desktopCapturer, ipcMain, Menu, screen } from "electron";
-import express from "express";
-import http from "http";
 import path from "path";
-import { Server } from "socket.io";
+import { io } from "socket.io-client";
 import { InputController } from "./inputController";
-const expressApp = express();
+const socket = io("https://2b584cbaa1d1.ngrok-free.app/remote-ctrl");
+
 let availableScreens: any[] = [];
 let mainWindow: BrowserWindow;
 let clientSelectedScreen: any;
 let displays: any;
-const dirname = path.join(path.resolve(), "dist");
-expressApp.use(express.static(dirname));
-const ls = path.join(dirname, "index.html");
+// const dirname = path.join(path.resolve(), "dist");
+// const ls = path.join(dirname, "index.html");
 
-console.log("Current path", ls);
-expressApp.get("/", function (req, res, next) {
-  res.sendFile(ls);
-  // res.status(200);
-});
+// const connections = io.of("/remote-ctrl");
 
-expressApp.set("port", 4000);
-expressApp.use(
-  cors({
-    origin: "*",
-  })
-);
+// connections.on("connection", async (socket) => {
+//   console.log("connection established");
+//   const ipController = new InputController();
+//   socket.on("offer", (sdp) => {
+//     console.log("routing offer");
+//     // send to the electron app
+//     socket.broadcast.emit("offer", sdp);
+//   });
 
-expressApp.use(function (req, res, next) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
-  res.setHeader("Access-Control-Allow-Headers", "X-Requested-With,content-type");
-  // res.setHeader("Access-Control-Allow-Credentials", true as any);
-  next();
-});
+//   socket.on("answer", (sdp) => {
+//     console.log("routing answer");
+//     // send to the electron app
+//     socket.broadcast.emit("answer", sdp);
+//   });
 
-const httpServer = http.createServer(expressApp);
-httpServer.listen(4000, "0.0.0.0");
-httpServer.on("error", (e) => console.log("error"));
-httpServer.on("listening", () => console.log("listening....."));
-const io = new Server(httpServer, {
-  origin: "*",
-} as any);
+//   socket.on("icecandidate", (icecandidate) => {
+//     socket.broadcast.emit("icecandidate", icecandidate);
+//   });
 
-const connections = io.of("/remote-ctrl");
+//   socket.on("selectedScreen", (selectedScreen) => {
+//     clientSelectedScreen = selectedScreen;
 
-connections.on("connection", async (socket) => {
-  console.log("connection established");
-  const ipController = new InputController();
-  socket.on("offer", (sdp) => {
-    console.log("routing offer");
-    // send to the electron app
-    socket.broadcast.emit("offer", sdp);
-  });
+//     socket.broadcast.emit("selectedScreen", clientSelectedScreen);
+//   });
 
-  socket.on("answer", (sdp) => {
-    console.log("routing answer");
-    // send to the electron app
-    socket.broadcast.emit("answer", sdp);
-  });
+//   socket.on("mouse_move", async ({ clientX, clientY, clientWidth, clientHeight }) => {
+//     const {
+//       displaySize: { width, height },
+//     } = clientSelectedScreen;
+//     const ratioX = width / clientWidth;
+//     const ratioY = height / clientHeight;
 
-  socket.on("icecandidate", (icecandidate) => {
-    socket.broadcast.emit("icecandidate", icecandidate);
-  });
+//     const hostX = clientX * ratioX;
+//     const hostY = clientY * ratioY;
+//     console.log("mouseMoved", hostX, hostY);
+//     ipController.mouseMove(hostX, hostY);
+//   });
 
-  socket.on("selectedScreen", (selectedScreen) => {
-    clientSelectedScreen = selectedScreen;
+//   socket.on("mouse_click", ({ button }) => {
+//     console.log("mouseClicked");
+//     ipController.mouseClick(button);
+//   });
 
-    socket.broadcast.emit("selectedScreen", clientSelectedScreen);
-  });
-
-  socket.on("mouse_move", async ({ clientX, clientY, clientWidth, clientHeight }) => {
-    const {
-      displaySize: { width, height },
-    } = clientSelectedScreen;
-    const ratioX = width / clientWidth;
-    const ratioY = height / clientHeight;
-
-    const hostX = clientX * ratioX;
-    const hostY = clientY * ratioY;
-    console.log("mouseMoved", hostX, hostY);
-    ipController.mouseMove(hostX, hostY);
-  });
-
-  socket.on("mouse_click", ({ button }) => {
-    console.log("mouseClicked");
-    ipController.mouseClick(button);
-  });
-
-  socket.on("keyPress", ({ button }) => {
-    console.log("keyPress", button);
-    ipController.keyPress(button);
-  });
-});
+//   socket.on("keyPress", ({ button }) => {
+//     console.log("keyPress", button);
+//     ipController.keyPress(button);
+//   });
+// });
 
 const sendSelectedScreen = (item: any) => {
   const displaySize = displays.filter((display: any) => `${display.id}` === item.display_id)[0].size;
-
   mainWindow.webContents.send("SET_SOURCE_ID", {
     id: item.id,
     displaySize,
@@ -168,6 +135,24 @@ const createWindow = () => {
   });
 
   mainWindow.webContents.openDevTools();
+  const ipController = new InputController();
+  socket.on("selectedScreen", (selectedScreen) => {
+    clientSelectedScreen = selectedScreen;
+    // sendSelectedScreen(clientSelectedScreen);
+    console.log("selectedScreen", clientSelectedScreen);
+  });
+  socket.on("mouse_move", async ({ clientX, clientY, clientWidth, clientHeight }) => {
+    console.log("Electron mouse move", clientSelectedScreen);
+    const {
+      displaySize: { width, height },
+    } = clientSelectedScreen;
+    const ratioX = width / clientWidth;
+    const ratioY = height / clientHeight;
+    const hostX = clientX * ratioX;
+    const hostY = clientY * ratioY;
+    console.log("mouseMoved", hostX, hostY);
+    ipController.mouseMove(hostX, hostY);
+  });
 };
 
 app.on("ready", () => {

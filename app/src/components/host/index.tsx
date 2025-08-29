@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
-const socket = io("https://2b584cbaa1d1.ngrok-free.app/remote-ctrl");
-// http://10.147.17.171:3333/
-export default function App() {
+import { useSocket } from "../../hooks/useSocket";
+// import io from "socket.io-client";
+// const socket = io("https://ef46e582e741.ngrok-free.app/remote-ctrl");
+export default function Host() {
+  const socket = useSocket("https://ef46e582e741.ngrok-free.app/remote-ctrl");
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedScreen, _setSelectedScreen] = useState({ id: "1" });
@@ -47,29 +48,23 @@ export default function App() {
       }
     };
 
-    // (window as any).electronAPI?.getScreenId((e: unknown, screenId: { id: string }) => {
-    //   console.log("e", e);
-    //   getStream(screenId);
-    // }) || getUserMedia();
-
     if ((window as any).electronAPI?.getScreenId) {
-      // Electron: Screen Sender (needs permission)
       (window as any).electronAPI.getScreenId((e: unknown, screenId: { id: string }) => {
         console.log("Electron screen ID:", screenId, e);
         getStream(screenId);
       });
     } else {
-      // Browser: Pure Receiver (NO permission needed)
-      console.log("Browser client - waiting to receive screen stream");
-      // Don't call getUserMedia at all!
-      rtcPeerConnection.current
-        .createOffer({
-          offerToReceiveVideo: true,
-        })
-        .then((sdp) => {
-          rtcPeerConnection.current.setLocalDescription(sdp);
-          socket.emit("offer", sdp);
-        });
+      //   console.log("Browser client - waiting to receive screen stream");
+      //   // Don't call getUserMedia at all!
+      //   rtcPeerConnection.current
+      //     .createOffer({
+      //       offerToReceiveVideo: true,
+      //     })
+      //     .then((sdp) => {
+      //       rtcPeerConnection.current.setLocalDescription(sdp);
+      //       socket.emit("offer", sdp);
+      //     });
+      alert("Electron client - waiting to receive screen stream");
     }
 
     socket.on("offer", async (offerSDP) => {
