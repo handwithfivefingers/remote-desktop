@@ -30,19 +30,18 @@ expressApp.use(function (req, res, next) {
   next();
 });
 
-const httpServer = http.createServer(expressApp);
+const httpServer = http.createServer(expressApp, {});
 httpServer.listen(4000, "0.0.0.0");
 httpServer.on("error", (e) => console.log("error"));
 httpServer.on("listening", () => console.log("listening....."));
 const io = new Server(httpServer, {
-  origin: "*",
+  // origin: ["*"], // Replace with your client's local development URL,
 });
 
 const connections = io.of("/remote-ctrl");
 
 connections.on("connection", async (socket) => {
   console.log("connection established");
-  //   const ipController = new InputController();
   socket.on("offer", (sdp) => {
     console.log("routing offer");
     socket.broadcast.emit("offer", sdp);
@@ -59,14 +58,17 @@ connections.on("connection", async (socket) => {
   });
 
   socket.on("selectedScreen", (selectedScreen) => {
-    clientSelectedScreen = selectedScreen;
     console.log("selectedScreen", clientSelectedScreen);
+    clientSelectedScreen = selectedScreen;
     socket.broadcast.emit("selectedScreen", clientSelectedScreen);
   });
 
   socket.on("mouse_move", async ({ clientX, clientY, clientWidth, clientHeight }) => {
     console.log("mouse_move", clientX, clientY, clientWidth, clientHeight);
     socket.broadcast.emit("mouse_move", { clientX, clientY, clientWidth, clientHeight });
+  });
+  socket.on("close", () => {
+    socket.broadcast.emit("close");
   });
 
   //   socket.on("mouse_click", ({ button }) => {

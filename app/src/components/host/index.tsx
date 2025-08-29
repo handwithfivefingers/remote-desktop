@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../../hooks/useSocket";
-// import io from "socket.io-client";
-// const socket = io("https://ef46e582e741.ngrok-free.app/remote-ctrl");
 export default function Host() {
-  const socket = useSocket("https://ef46e582e741.ngrok-free.app/remote-ctrl");
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  console.log("Host rendered");
+  const socket = useSocket("https://d09053434fdb.ngrok-free.app/remote-ctrl");
   const [selectedScreen, _setSelectedScreen] = useState({ id: "1" });
   const selectedScreenRef = useRef(selectedScreen);
 
@@ -16,14 +13,13 @@ export default function Host() {
   };
   const rtcPeerConnection = useRef(
     new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.services.mozilla.com" }, { urls: "stun:stun.l.google.com:19302" }],
+      iceServers: [],
     })
   );
 
   const handleStream = (selectedScreen: { id: string }, stream: MediaStream) => {
     setSelectedScreen(selectedScreen);
     socket.emit("selectedScreen", selectedScreen);
-
     stream.getTracks().forEach((track) => {
       rtcPeerConnection.current.addTrack(track, stream);
     });
@@ -54,16 +50,6 @@ export default function Host() {
         getStream(screenId);
       });
     } else {
-      //   console.log("Browser client - waiting to receive screen stream");
-      //   // Don't call getUserMedia at all!
-      //   rtcPeerConnection.current
-      //     .createOffer({
-      //       offerToReceiveVideo: true,
-      //     })
-      //     .then((sdp) => {
-      //       rtcPeerConnection.current.setLocalDescription(sdp);
-      //       socket.emit("offer", sdp);
-      //     });
       alert("Electron client - waiting to receive screen stream");
     }
 
@@ -101,61 +87,29 @@ export default function Host() {
       console.log(e);
     };
 
-    rtcPeerConnection.current.ontrack = (e) => {
-      console.log("Browser received screen stream from Electron");
-      if (!videoRef.current) return;
-      console.log("onTrack", e);
-      videoRef.current.srcObject = e.streams[0];
-      videoRef.current.onloadedmetadata = () => {
-        if (videoRef.current) videoRef.current.play();
-      };
-    };
     console.log("rtcPeerConnection", rtcPeerConnection.current);
+
+    return () => {
+      socket.off("offer");
+      socket.off("answer");
+      socket.off("icecandidate");
+      socket.off("selectedScreen");
+      socket.emit("close");
+      rtcPeerConnection.current.onicecandidate = null;
+      rtcPeerConnection.current.oniceconnectionstatechange = null;
+      rtcPeerConnection.current.onconnectionstatechange = null;
+    };
   }, []);
-
-  const handleMouseClick = () => socket.emit("mouse_click", {});
-
-  const handleMouseMove = ({ clientX, clientY }: { clientX: number; clientY: number }) => {
-    try {
-      console.log("emit mouse_move", clientX, clientY);
-      socket.emit("mouse_move", {
-        clientX,
-        clientY,
-        clientWidth: window.innerWidth,
-        clientHeight: window.innerHeight,
-      });
-    } catch (error) {
-      console.log("error", error);
-    }
-  };
 
   const [isFocus, setIsFocus] = useState(false);
-  const handleKeyPress = (e: KeyboardEvent) => {
-    if (!isFocus) return;
-    console.log("e", e);
-    socket.emit("keyPress", { button: e.key });
-  };
-
-  useEffect(() => {
-    document.addEventListener("keyup", handleKeyPress);
-    return () => {
-      document.removeEventListener("keyup", handleKeyPress);
-    };
-  }, []);
 
   return (
     <div
-      className={`flex gap-8 p-4 flex-col bg-red-50 ${isFocus ? "border-2 border-red-500" : ""}`}
+      className={`flex gap-8 p-4 flex-col ${isFocus ? "border-2 border-red-500" : ""}`}
       onClick={() => setIsFocus(true)}
     >
-      <div className="w-full relative p-4" onClick={handleMouseClick} onMouseMove={handleMouseMove}>
-        <span className="pb-[56.25%] block w-full rounded z-[1]" />
-        <video ref={videoRef} className="video absolute top-0 left-0 w-full h-full " autoPlay muted>
-          video not available
-        </video>
-
-        <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
-      </div>
+      You are the host
+      Screen: {selectedScreen.id}
     </div>
   );
 }
