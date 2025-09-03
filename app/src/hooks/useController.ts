@@ -1,4 +1,3 @@
-import { type MouseEvent } from "react";
 import { io, Socket } from "socket.io-client";
 
 interface EventData {
@@ -27,7 +26,12 @@ interface EventData {
 class InputController {
   pressedKeys = new Set<string>();
   mousePos = { x: 0, y: 0 };
-  socket: Socket = io("http://localhost:5001");
+  // socket: Socket = io("http://172.16.52.150:5001");
+  socket: Socket = io("https://crazy-hairs-relate.loca.lt", {
+    // extraHeaders: {
+    //   "Bypass-Tunnel-Reminder": "yup",
+    // },
+  });
   isCapturing = false;
   eventCount = 0;
   mouseDownInfo: { x: number; y: number; timestamp: number } | null = null;
@@ -42,7 +46,6 @@ class InputController {
     // dragThreshold: 3, // pixels to move before considering it a drag
     // dragType: "unknown", // 'text', 'element', 'unknown'
   };
-
   constructor() {
     // this.socket = io(url);
     this.socket.connect();
@@ -75,10 +78,24 @@ class InputController {
     return false;
   };
 
-  onMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+  onMouseMove = ({
+    clientX,
+    clientY,
+    movementX,
+    movementY,
+    hostX,
+    hostY,
+  }: {
+    hostX: number;
+    hostY: number;
+    clientX: number;
+    clientY: number;
+    movementX?: number;
+    movementY?: number;
+  }) => {
     if (this.mouseDownInfo) {
-      const deltaX = e.clientX - this.mouseDownInfo.x;
-      const deltaY = e.clientY - this.mouseDownInfo.y;
+      const deltaX = clientX - this.mouseDownInfo.x;
+      const deltaY = clientY - this.mouseDownInfo.y;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
       console.log("distances", distance);
       // this.dragState.isDragging = true;
@@ -89,20 +106,17 @@ class InputController {
         };
       }
     }
-
-    this.mousePos.x = e.movementX || e.clientX;
-    this.mousePos.y = e.movementY || e.clientY;
-
+    this.mousePos.x = hostX;
+    this.mousePos.y = hostY;
     const eventData: EventData = {
       type: "mousemove",
       x: this.mousePos.x,
       y: this.mousePos.y,
-      movementX: e.movementX || 0,
-      movementY: e.movementY || 0,
-      clientX: e.clientX,
-      clientY: e.clientY,
+      movementX: movementX || 0,
+      movementY: movementY || 0,
+      clientX: clientX,
+      clientY: clientY,
       isDragging: this.dragState?.isDragging,
-      // dragType: this.dragState.isDragging ? this.dragState.dragType : null,
       timestamp: Date.now(),
     };
     this.sendEvent(eventData);

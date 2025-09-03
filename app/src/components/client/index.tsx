@@ -3,8 +3,10 @@ import { InputController } from "../../hooks/useController";
 import { useSocket } from "../../hooks/useSocket";
 
 export default function Client() {
-  const socket = useSocket(`http://localhost:4000/remote-ctrl`);
+  const socket = useSocket(`https://20c64e33f1fa.ngrok-free.app/remote-ctrl`);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [screen, setScreenSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
   const inputController = useMemo(() => {
     const ip = new InputController();
     return ip;
@@ -106,30 +108,33 @@ export default function Client() {
     };
   }, []);
 
-  // const handleMouseClick = () => {
-  //   socket.emit("mouse_click", {
-  //     button: "left",
-  //   });
-  // };
-  // const handleMouseMove = ({ clientX, clientY }: { clientX: number; clientY: number }) => {
-  //   try {
-  //     if (!videoRef.current) return;
-  //     const videoRect = videoRef.current.getBoundingClientRect();
-
-  //     // Mouse position relative to the video element
-  //     const mouseX = clientX - videoRect.left;
-  //     const mouseY = clientY - videoRect.top;
-
-  //     socket.emit("mouse_move", {
-  //       clientX: mouseX,
-  //       clientY: mouseY,
-  //       clientWidth: videoRect.width,
-  //       clientHeight: videoRect.height,
-  //     });
-  //   } catch (error) {
-  //     console.log("error", error);
-  //   }
-  // };
+  const handleMouseMove = ({
+    clientX,
+    clientY,
+    movementX,
+    movementY,
+  }: {
+    clientX: number;
+    clientY: number;
+    movementX: number;
+    movementY: number;
+  }) => {
+    try {
+      if (!videoRef.current) return;
+      const videoRect = videoRef.current.getBoundingClientRect();
+      const mouseX = clientX - videoRect.left;
+      const mouseY = clientY - videoRect.top;
+      const clientWidth = videoRect.width;
+      const clientHeight = videoRect.height;
+      const ratioX = screen.width / clientWidth;
+      const ratioY = screen.height / clientHeight;
+      const hostX = mouseX * ratioX;
+      const hostY = mouseY * ratioY;
+      inputController.onMouseMove({ clientX, clientY, hostX, hostY, movementX, movementY });
+    } catch (error) {
+      console.log("error", error);
+    }
+  };
 
   const [isFocus, setIsFocus] = useState(false);
   const latencyRef = useRef<HTMLSpanElement>(null);
@@ -157,6 +162,10 @@ export default function Client() {
     }
     let interval: number | null = null;
     interval = setInterval(() => getWebRTCLatency(rtcPeerConnection.current), 250);
+
+    socket.on("selectedScreen", (selectedScreen: { displaySize: { width: number; height: number } }) => {
+      setScreenSize(selectedScreen.displaySize);
+    });
 
     return () => {
       socket.off("ping_check");
@@ -227,7 +236,7 @@ export default function Client() {
         className="w-full relative ring ring-amber-600 rounded-lg"
         onMouseDown={inputController.onMouseDown}
         onMouseUp={inputController.onMouseUp}
-        onMouseMove={inputController.onMouseMove}
+        onMouseMove={handleMouseMove}
         onWheel={inputController.onMouseWheel}
       >
         <span className="pb-[56.25%] block w-full rounded z-[1]" />

@@ -10,9 +10,9 @@ expressApp.use(express.static(dirname));
 const ls = path.join(dirname, "index.html");
 
 console.log("Current path", ls);
+
 expressApp.get("/", function (req, res, next) {
   res.sendFile(ls);
-  // res.status(200);
 });
 
 expressApp.set("port", 4000);
@@ -30,7 +30,11 @@ expressApp.use(function (req, res, next) {
   next();
 });
 
-const httpServer = http.createServer(expressApp, {});
+const httpServer = http.createServer(expressApp, {
+  cors: {
+    origin: "*",
+  },
+});
 httpServer.listen(4000, "0.0.0.0");
 httpServer.on("error", (e) => console.log("error"));
 httpServer.on("listening", () => console.log("listening....."));

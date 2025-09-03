@@ -8,59 +8,6 @@ let availableScreens: any[] = [];
 let mainWindow: BrowserWindow;
 let clientSelectedScreen: any;
 let displays: any;
-// const dirname = path.join(path.resolve(), "dist");
-// const ls = path.join(dirname, "index.html");
-
-// const connections = io.of("/remote-ctrl");
-
-// connections.on("connection", async (socket) => {
-//   console.log("connection established");
-//   const ipController = new InputController();
-//   socket.on("offer", (sdp) => {
-//     console.log("routing offer");
-//     // send to the electron app
-//     socket.broadcast.emit("offer", sdp);
-//   });
-
-//   socket.on("answer", (sdp) => {
-//     console.log("routing answer");
-//     // send to the electron app
-//     socket.broadcast.emit("answer", sdp);
-//   });
-
-//   socket.on("icecandidate", (icecandidate) => {
-//     socket.broadcast.emit("icecandidate", icecandidate);
-//   });
-
-//   socket.on("selectedScreen", (selectedScreen) => {
-//     clientSelectedScreen = selectedScreen;
-
-//     socket.broadcast.emit("selectedScreen", clientSelectedScreen);
-//   });
-
-//   socket.on("mouse_move", async ({ clientX, clientY, clientWidth, clientHeight }) => {
-//     const {
-//       displaySize: { width, height },
-//     } = clientSelectedScreen;
-//     const ratioX = width / clientWidth;
-//     const ratioY = height / clientHeight;
-
-//     const hostX = clientX * ratioX;
-//     const hostY = clientY * ratioY;
-//     console.log("mouseMoved", hostX, hostY);
-//     ipController.mouseMove(hostX, hostY);
-//   });
-
-//   socket.on("mouse_click", ({ button }) => {
-//     console.log("mouseClicked");
-//     ipController.mouseClick(button);
-//   });
-
-//   socket.on("keyPress", ({ button }) => {
-//     console.log("keyPress", button);
-//     ipController.keyPress(button);
-//   });
-// });
 
 const sendSelectedScreen = (item: any) => {
   const displaySize = displays.filter((display: any) => `${display.id}` === item.display_id)[0].size;
@@ -115,6 +62,15 @@ const createWindow = () => {
     }
   });
 
+  ipcMain.handle("screens", () => {
+    return availableScreens;
+  });
+
+  ipcMain.on("selectedScreen", (event, screenId: string) => {
+    // clientSelectedScreen = selectedScreen;
+    const activeScreen = availableScreens.find((screen) => screen.id === screenId);
+    sendSelectedScreen(activeScreen);
+  });
   mainWindow.loadURL("http://localhost:3333");
   mainWindow.once("ready-to-show", () => {
     displays = screen.getAllDisplays();

@@ -1,6 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "../../hooks/useSocket";
+
+interface IScreen {
+  appIcon: string | null;
+  display_id: string;
+  id: string;
+  name: string;
+}
+
 export default function Host() {
   console.log("Host rendered");
   const socket = useSocket("https://d09053434fdb.ngrok-free.app/remote-ctrl");
@@ -101,15 +109,40 @@ export default function Host() {
     };
   }, []);
 
-  const [isFocus, setIsFocus] = useState(false);
+  useEffect(() => {
+    (window as any).electronAPI?.getScreens().then((r: IScreen[]) => {
+      console.log("function", r);
+      setScreen(r);
+    });
+  }, []);
+  const [screens, setScreen] = useState<IScreen[]>([]);
 
+  const onSelectScreen = (id: string) => {
+    if ((window as any).electronAPI && (window as any).electronAPI?.selectScreen) {
+      (window as any).electronAPI.selectScreen(id);
+    }
+  };
   return (
-    <div
-      className={`flex gap-8 p-4 flex-col ${isFocus ? "border-2 border-red-500" : ""}`}
-      onClick={() => setIsFocus(true)}
-    >
-      You are the host
-      Screen: {selectedScreen.id}
+    <div className={`flex gap-8 p-4 flex-col`}>
+      <div className="flex gap-8 justify-center ">
+        {screens?.map((screen) => {
+          return (
+            <div
+              key={screen.id}
+              className={[
+                "shadow border border-indigo-400 p-6  py-8 rounded-md cursor-pointer hover:bg-indigo-50",
+                selectedScreen.id === screen.id ? "ring  ring-indigo-400 bg-indigo-50" : "bg-indigo-200 ",
+              ].join(" ")}
+              onClick={() => onSelectScreen(screen.id)}
+            >
+              <h2>{screen.name}</h2>
+            </div>
+          );
+        })}
+      </div>
+      <span>
+        You are the host Screen: <b>{selectedScreen.id}</b>
+      </span>
     </div>
   );
 }
