@@ -3,6 +3,10 @@ from flask_socketio import SocketIO
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
 import logging
+import pynput
+
+
+
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -26,8 +30,7 @@ except ImportError:
     print("PyAutoGUI not installed. Install with: pip install pyautogui")
 
 try:
-    import pynput
-    from pynput import mouse, keyboard
+    
     PYNPUT_AVAILABLE = True
 except ImportError:
     PYNPUT_AVAILABLE = False
@@ -42,15 +45,9 @@ class InputHandler:
         self.event_count = 0
         self.mouse_position = (0, 0)
         self.pressed_keys = set()
+        self.mouse_controller = mouse
+        self.keyboard_controller = keyboard
         
-        # Initialize controllers if available and execution is enabled
-        if self.execute_inputs and PYNPUT_AVAILABLE:
-            self.mouse_controller = pynput.mouse.Controller()
-            self.keyboard_controller = pynput.keyboard.Controller()
-        else:
-            self.mouse_controller = None
-            self.keyboard_controller = None
-    
     def handle_event(self,event_data):
         """Process an input event"""
         event_type = event_data.get('type')
@@ -102,7 +99,7 @@ class InputHandler:
             try:
                 if movement_x != 0 or movement_y != 0:
                     # Use relative movement
-                    self.mouse_controller.move(movement_x, movement_y)
+                    self.move_mouse(movement_x, movement_y)
                 else:
                     # Use absolute positioning
                     self.mouse_controller.position = (new_x, new_y)
@@ -322,6 +319,19 @@ class InputHandler:
         
         pynput_key = key_mapping.get(key, key)
         self.keyboard_controller.release(pynput_key)
+    
+    @staticmethod
+    def move_mouse(x, y):
+        """Move mouse to specified coordinates"""
+        try:
+            if not isinstance(x, (int, float)) or not isinstance(y, (int, float)):
+                raise ValueError("Coordinates must be numeric")
+            mouse.position = (int(x), int(y))
+            logger.info(f"Mouse moved to: ({x}, {y})")
+            return True
+        except Exception as e:
+            logger.error(f"Failed to move mouse: {e}")
+            return False
     
     def get_stats(self):
         """Get statistics about handled events"""
