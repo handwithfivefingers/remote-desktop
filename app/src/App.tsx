@@ -6,7 +6,7 @@ import Client from "./components/client";
 export default function App() {
   const [mode, setMode] = useState<undefined | string>(undefined);
   return (
-    <div className="flex gap-2 p-4 bg-slate-50 h-screen items-center justify-center flex-wrap">
+    <div className="flex gap-2 p-4 bg-slate-50 h-screen items-center justify-center flex-wrap overscroll-x-contain">
       {mode === undefined && (
         <>
           <Card label="Host" onClick={() => setMode("host")} />

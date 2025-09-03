@@ -1,9 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { InputController } from "../../hooks/useController";
 import { useSocket } from "../../hooks/useSocket";
 
 export default function Client() {
-  const socket = useSocket("https://d09053434fdb.ngrok-free.app/remote-ctrl");
+  const socket = useSocket(`http://localhost:4000/remote-ctrl`);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const inputController = useMemo(() => {
+    const ip = new InputController();
+    return ip;
+  }, []);
   const [isReady, setIsReady] = useState(false);
   const rtcPeerConnection = useRef(
     new RTCPeerConnection({
@@ -101,32 +106,30 @@ export default function Client() {
     };
   }, []);
 
-  const handleMouseClick = () => {
-    console.log("Mouse Clicked");
-    socket.emit("mouse_click", {
-      button: "left",
-    });
-  };
-  const handleMouseMove = ({ clientX, clientY }: { clientX: number; clientY: number }) => {
-    try {
-      console.log("emit mouse_move", clientX, clientY);
-      if (!videoRef.current) return;
-      const videoRect = videoRef.current.getBoundingClientRect();
+  // const handleMouseClick = () => {
+  //   socket.emit("mouse_click", {
+  //     button: "left",
+  //   });
+  // };
+  // const handleMouseMove = ({ clientX, clientY }: { clientX: number; clientY: number }) => {
+  //   try {
+  //     if (!videoRef.current) return;
+  //     const videoRect = videoRef.current.getBoundingClientRect();
 
-      // Mouse position relative to the video element
-      const mouseX = clientX - videoRect.left;
-      const mouseY = clientY - videoRect.top;
+  //     // Mouse position relative to the video element
+  //     const mouseX = clientX - videoRect.left;
+  //     const mouseY = clientY - videoRect.top;
 
-      socket.emit("mouse_move", {
-        clientX: mouseX,
-        clientY: mouseY,
-        clientWidth: videoRect.width,
-        clientHeight: videoRect.height,
-      });
-    } catch (error) {
-      console.log("error", error);
-    }
-  };
+  //     socket.emit("mouse_move", {
+  //       clientX: mouseX,
+  //       clientY: mouseY,
+  //       clientWidth: videoRect.width,
+  //       clientHeight: videoRect.height,
+  //     });
+  //   } catch (error) {
+  //     console.log("error", error);
+  //   }
+  // };
 
   const [isFocus, setIsFocus] = useState(false);
   const latencyRef = useRef<HTMLSpanElement>(null);
@@ -161,36 +164,46 @@ export default function Client() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!isFocus) return;
-    const keyPressEvent = (e: KeyboardEvent) => {
-      console.log("e.key", e.key);
-      const keys = [];
-      if (e.ctrlKey || e.metaKey) keys.push("ctrl");
-      if (e.shiftKey) keys.push("shift");
-      if (e.altKey) keys.push("alt");
-      console.log("keys", keys);
-      keys.push(e.key.toLowerCase());
-      if (keys.length > 1) {
-        socket.emit("key_combo", { button: keys });
-      } else {
-        socket.emit("key_press", { button: e.key });
-      }
-    };
-    window.addEventListener("keydown", keyPressEvent);
-    return () => {
-      window.removeEventListener("keydown", keyPressEvent);
-    };
-  }, [isFocus]);
+  // useEffect(() => {
+  //   if (!isFocus) return;
+  //   const keyPressEvent = (e: KeyboardEvent) => {
+  //     console.log("e.key", e.key);
+  //     const keys = [];
+  //     if (e.ctrlKey) keys.push("ctrl");
+  //     else if (e.shiftKey) keys.push("shift");
+  //     else if (e.altKey) keys.push("alt");
+  //     else if (e.metaKey) keys.push("ctrl");
+  //     keys.push(e.key.toLowerCase());
+  //     if (keys.length > 1) {
+  //       socket.emit("key_combo", { button: keys });
+  //     } else {
+  //       socket.emit("key_press", { button: e.key });
+  //     }
+  //   };
+  //   window.addEventListener("keydown", keyPressEvent);
+  //   return () => {
+  //     window.removeEventListener("keydown", keyPressEvent);
+  //   };
+  // }, [isFocus]);
 
-  const handleScroll = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    console.log("handleScroll", e);
-    socket.emit("mouse_scroll", {
-      dx: Math.sign(e.deltaX),
-      dy: Math.sign(e.deltaY),
-    });
-  };
+  // const handleScroll = (e: React.WheelEvent<HTMLDivElement>) => {
+  //   e.stopPropagation();
+  //   socket.emit("mouse_scroll", {
+  //     dx: Math.sign(e.deltaX),
+  //     dy: -Math.sign(e.deltaY),
+  //   });
+  // };
+
+  useEffect(() => {
+    window.addEventListener("keydown", inputController.onKeyDown);
+    window.addEventListener("keyup", inputController.onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", inputController.onKeyDown);
+      window.removeEventListener("keyup", inputController.onKeyUp);
+    };
+  }, []);
+
+  console.log("inputController", inputController);
 
   return (
     <div
@@ -212,9 +225,10 @@ export default function Client() {
       </div>
       <div
         className="w-full relative ring ring-amber-600 rounded-lg"
-        onClick={handleMouseClick}
-        onMouseMove={handleMouseMove}
-        onWheel={handleScroll}
+        onMouseDown={inputController.onMouseDown}
+        onMouseUp={inputController.onMouseUp}
+        onMouseMove={inputController.onMouseMove}
+        onWheel={inputController.onMouseWheel}
       >
         <span className="pb-[56.25%] block w-full rounded z-[1]" />
         <video ref={videoRef} className="video absolute top-0 left-0 w-full h-full " autoPlay muted>
